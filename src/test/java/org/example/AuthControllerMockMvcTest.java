@@ -35,7 +35,6 @@ public class AuthControllerMockMvcTest {
     }
 
 
-
     @Test
     public void testRegister_EmailAlreadyExists() throws Exception {
         // Arrange - Register first user
