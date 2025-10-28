@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.annotation.Rollback;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -20,19 +21,31 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@Transactional
-@Rollback
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)  // ← הוסף!
+
 public class PostControllerMockMvcTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    private String createValidToken() {
+        return jwtUtil.generateToken("admin@example.com", Role.ADMIN);
+    }
+
     @Test
     public void testNewPost()throws Exception{
+        String token = createValidToken();
         //Create user (will get ID=1)
-        mockMvc.perform(post("/users").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\": \"Test name\",\"lastName\": \"Test last name\",\"age\":30,\"password\":\"testPassword123\"}"));
+        mockMvc.perform(post("/users")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\": \"Test name\",\"lastName\": \"Test last name\",\"age\":30,\"password\":\"testPassword123\",\"email\":\"test@example.com\"}"));
         //Create post for user ID=1
-        mockMvc.perform(post("/users/{userId}/posts", 1L).contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/users/{userId}/posts", 1L)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"title\":\"test title\",\"content\":\"test content\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title", is("test title")))
@@ -40,25 +53,35 @@ public class PostControllerMockMvcTest {
     }
     @Test
     public void testNewPost_UserNotFound()throws Exception{
+        String token = createValidToken();
         //Create post with no user
-        mockMvc.perform(post("/users/{userId}/posts", 999L).contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/users/{userId}/posts", 999L)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"test title\",\"content\":\"test content\"}"))
                 .andExpect(status().isNotFound());
     }
     @Test
     public void testUserAllPosts()throws Exception{
+        String token = createValidToken();
         //Create user (will get ID=1)
-        mockMvc.perform(post("/users").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\": \"Test name\",\"lastName\": \"Test last name\",\"age\":30,\"password\":\"testPassword123\"}"));
+        mockMvc.perform(post("/users")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\": \"Test name\",\"lastName\": \"Test last name\",\"age\":30,\"password\":\"testPassword123\",\"email\":\"test@example.com\"}"));
         //Create 3 posts for user ID=1
-        mockMvc.perform(post("/users/{userId}/posts", 1L).contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/users/{userId}/posts", 1L)
+                .header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"title\":\"test 1 title\",\"content\":\"test 1 content\"}"));
-        mockMvc.perform(post("/users/{userId}/posts", 1L).contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/users/{userId}/posts", 1L)
+                .header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"title\":\"test 2 title\",\"content\":\"test 2 content\"}"));
-        mockMvc.perform(post("/users/{userId}/posts", 1L).contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/users/{userId}/posts", 1L)
+                .header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"title\":\"test 3 title\",\"content\":\"test 3 content\"}"));
         //return all post by user with id = 1L
-        mockMvc.perform(get("/users/{userId}/posts",1L))
+        mockMvc.perform(get("/users/{userId}/posts",1L)
+                        .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(3)))
                 .andExpect(jsonPath("$[0].title", is("test 1 title")))
@@ -71,20 +94,30 @@ public class PostControllerMockMvcTest {
 
     @Test
     public void testReturnAllPost()throws Exception{
+        String token = createValidToken();
         //Create user (will get ID=1)
-        mockMvc.perform(post("/users").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\": \"Test name\",\"lastName\": \"Test last name\",\"age\":30,\"password\":\"testPassword123\"}"));
+        mockMvc.perform(post("/users")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\": \"Test name\",\"lastName\": \"Test last name\",\"age\":30,\"password\":\"testPassword123\",\"email\":\"test@example.com\"}"));
         //Create user (will get ID=2)
-        mockMvc.perform(post("/users").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\": \"Test 2 name\",\"lastName\": \"Test 2 last name\",\"age\":30,\"password\":\"testPassword123\"}"));
+        mockMvc.perform(post("/users")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\": \"Test 2 name\",\"lastName\": \"Test 2 last name\",\"age\":30,\"password\":\"testPassword123\",\"email\":\"test2@example.com\"}"));
         //Create 1 posts for user ID=1
-        mockMvc.perform(post("/users/{userId}/posts", 1L).contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/users/{userId}/posts", 1L)
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"title\":\"test 1 title\",\"content\":\"test 1 content\"}"));
         //Create 1 posts for user ID=2
-        mockMvc.perform(post("/users/{userId}/posts", 2L).contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/users/{userId}/posts", 2L)
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"title\":\"test 2 title\",\"content\":\"test 2 content\"}"));
         //return all posts by all users
-        mockMvc.perform(get("/posts"))
+        mockMvc.perform(get("/posts")
+                        .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)))
                 .andExpect(jsonPath("$[0].title", is("test 1 title")))
@@ -95,76 +128,114 @@ public class PostControllerMockMvcTest {
 
     @Test
     public void testFindByTitle()throws Exception{
+        String token = createValidToken();
         //Create user (will get ID=1)
-        mockMvc.perform(post("/users").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\": \"Test name\",\"lastName\": \"Test last name\",\"age\":30,\"password\":\"testPassword123\"}"));
+        mockMvc.perform(post("/users")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\": \"Test name\",\"lastName\": \"Test last name\",\"age\":30,\"password\":\"testPassword123\",\"email\":\"test@example.com\"}"));
         //Create 1 posts for user ID=1
-        mockMvc.perform(post("/users/{userId}/posts", 1L).contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/users/{userId}/posts", 1L)
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"title\":\"test 1 title\",\"content\":\"test 1 content\"}"));
         //find the post by the title
-        mockMvc.perform(get("/posts/title/{title}","test 1 title"))
+        mockMvc.perform(get("/posts/title/{title}","test 1 title")
+                        .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].title",is("test 1 title")));
     }
     @Test
     public  void testFindByTitleContaining()throws Exception{
+        String token = createValidToken();
         //Create user (will get ID=1)
-        mockMvc.perform(post("/users").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\": \"Test name\",\"lastName\": \"Test last name\",\"age\":30,\"password\":\"testPassword123\"}"));
+        mockMvc.perform(post("/users")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\": \"Test name\",\"lastName\": \"Test last name\",\"age\":30,\"password\":\"testPassword123\",\"email\":\"test@example.com\"}"));
         //Create 1 posts for user ID=1
-        mockMvc.perform(post("/users/{userId}/posts", 1L).contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/users/{userId}/posts", 1L)
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"title\":\"test 1 title\",\"content\":\"test 1 content\"}"));
         //try to find by title containing
-        mockMvc.perform(get("/posts/search/{keyword}","test"))
+        mockMvc.perform(get("/posts/search/{keyword}","test")
+                        .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].title", is("test 1 title")));
     } @Test
     public  void testFindByTitleContaining_PostNotFound()throws Exception{
+        String token = createValidToken();
         //Create user (will get ID=1)
-        mockMvc.perform(post("/users").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\": \"Test name\",\"lastName\": \"Test last name\",\"age\":30,\"password\":\"testPassword123\"}"));
+        mockMvc.perform(post("/users")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\": \"Test name\",\"lastName\": \"Test last name\",\"age\":30,\"password\":\"testPassword123\",\"email\":\"test@example.com\"}"));
         //Create 1 posts for user ID=1
-        mockMvc.perform(post("/users/{userId}/posts", 1L).contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/users/{userId}/posts", 1L)
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"title\":\"test 1 title\",\"content\":\"test 1 content\"}"));
         //try to find by title containing
-        mockMvc.perform(get("/posts/search/{keyword}","sdfs"))
+        mockMvc.perform(get("/posts/search/{keyword}","sdfs")
+                        .header("Authorization", "Bearer " + token))
                 .andExpect(status().isNotFound());
     }
     @Test
     public void testFindByUserId()throws Exception{
+        String token = createValidToken();
         //Create user (will get ID=1)
-        mockMvc.perform(post("/users").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\": \"Test name\",\"lastName\": \"Test last name\",\"age\":30,\"password\":\"testPassword123\"}"));
+        mockMvc.perform(post("/users")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\": \"Test name\",\"lastName\": \"Test last name\",\"age\":30,\"password\":\"testPassword123\",\"email\":\"test2@example.com\"}"));
         //Create user (will get ID=2)
-        mockMvc.perform(post("/users").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\": \"Test 2 name\",\"lastName\": \"Test 2 last name\",\"age\":30,\"password\":\"testPassword123\"}"));
+        mockMvc.perform(post("/users")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\": \"Test 2 name\",\"lastName\": \"Test 2 last name\",\"age\":30,\"password\":\"testPassword123\",\"email\":\"test@example.com\"}"));
         //Create 1 posts for user ID=1
-        mockMvc.perform(post("/users/{userId}/posts", 1L).contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/users/{userId}/posts", 1L)
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"title\":\"test 1 title\",\"content\":\"test 1 content\"}"));
         //Create 1 posts for user ID=2
-        mockMvc.perform(post("/users/{userId}/posts", 2L).contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/users/{userId}/posts", 2L)
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"title\":\"test 2 title\",\"content\":\"test 2 content\"}"));
         //get all post by user (id = 1L)
-        mockMvc.perform(get("/posts/user/{userId}",1L))
+        mockMvc.perform(get("/posts/user/{userId}",1L)
+                        .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk());
     }
     @Test
     public void testFindByUserId_UserNotFound()throws Exception{
+        String token = createValidToken();
         //Create user (will get ID=1)
-        mockMvc.perform(post("/users").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\": \"Test name\",\"lastName\": \"Test last name\",\"age\":30,\"password\":\"testPassword123\"}"));
+        mockMvc.perform(post("/users")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\": \"Test name\",\"lastName\": \"Test last name\",\"age\":30,\"password\":\"testPassword123\",\"email\":\"test@example.com\"}"));
         //Create user (will get ID=2)
-        mockMvc.perform(post("/users").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\": \"Test 2 name\",\"lastName\": \"Test 2 last name\",\"age\":30,\"password\":\"testPassword123\"}"));
+        mockMvc.perform(post("/users")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\": \"Test 2 name\",\"lastName\": \"Test 2 last name\",\"age\":30,\"password\":\"testPassword123\",\"email\":\"test2@example.com\"}"));
         //Create 1 posts for user ID=1
-        mockMvc.perform(post("/users/{userId}/posts", 1L).contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/users/{userId}/posts", 1L)
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"title\":\"test 1 title\",\"content\":\"test 1 content\"}"));
         //Create 1 posts for user ID=2
-        mockMvc.perform(post("/users/{userId}/posts", 2L).contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/users/{userId}/posts", 2L)
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"title\":\"test 2 title\",\"content\":\"test 2 content\"}"));
         //try to get all post of user that no exist
-        mockMvc.perform(get("/posts/user/{userId}",3L))
+        mockMvc.perform(get("/posts/user/{userId}",3L)
+                        .header("Authorization", "Bearer " + token))
                 .andExpect(status().isNotFound());
     }
 }
