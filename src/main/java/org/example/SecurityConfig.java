@@ -3,6 +3,7 @@ package org.example;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -22,6 +23,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  */
 @Configuration  // Tells Spring this is a configuration class
 @EnableWebSecurity  // Enables Spring Security for the application
+@EnableMethodSecurity  // Enables @PreAuthorize on methods to check user roles before method execution
+
 public class SecurityConfig {
 
     // Inject our custom JWT filter that validates tokens

@@ -2,6 +2,7 @@ package org.example;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -11,6 +12,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * JwtAuthenticationFilter - Security Filter for JWT Token Validation
@@ -77,7 +79,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 new UsernamePasswordAuthenticationToken(
                         email,           // principal (who is the user)
                         null,            // credentials (no password needed here)
-                        new ArrayList<>() // authorities (roles) - empty for now
+                        List.of(new SimpleGrantedAuthority("ROLE_" + role)) // authorities - user's roles for authorization
                 );
 
         // STEP 7: Set authentication in SecurityContext

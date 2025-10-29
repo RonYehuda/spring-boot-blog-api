@@ -6,9 +6,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -23,6 +24,8 @@ public class UserController {
     @Autowired
     private JwtUtil jwtUtil;
 
+
+    @PreAuthorize("hasRole('ADMIN')") // Only ADMIN can create users
     @PostMapping("/users")
     public ResponseEntity<String> createUser(@Valid @RequestBody User user) {
         logger.info("Creating new user: {} {}", user.getName(), user.getLastName());
@@ -32,9 +35,13 @@ public class UserController {
         return ResponseEntity.status(201).body(message);
     }
 
+    @PreAuthorize("hasRole('ADMIN')") // Only ADMIN can view all users
     @GetMapping("/users")
     public ResponseEntity<List<User>> getAllUsers(HttpServletRequest request){
-        String authHeader  = request.getHeader("Authorization"); //Extract the token
+        List<User> users = userRepository.findAll();
+        return ResponseEntity.ok(users);
+       /* ===== OLD CODE - BEFORE ROLE-BASED AUTHORIZATION =====
+       String authHeader  = request.getHeader("Authorization"); //Extract the token
         if (authHeader == null || !authHeader.startsWith("Bearer ")){ // Check if header exists and has correct format
             return ResponseEntity.status(401).body(null);
         }
@@ -44,8 +51,11 @@ public class UserController {
             return ResponseEntity.ok(users);
         }
         return ResponseEntity.status(403).body(null); // Forbidden(not an ADMIN)
+        ======================================================*/
+
     }
 
+    @PreAuthorize("isAuthenticated()") // Any authenticated user can view a user by ID
     @GetMapping("/users/{id}")
     public ResponseEntity<User> getUserById(@PathVariable Long id){
        Optional<User> optionalUser = userRepository.findById(id);
@@ -55,39 +65,81 @@ public class UserController {
        return ResponseEntity.notFound().build();
     }
 
+    @PreAuthorize("isAuthenticated()")  // Must be logged in
     @PutMapping("/users/{id}")
-    public ResponseEntity<String> updateUser(@PathVariable Long id, @Valid @RequestBody User updateUser){
+    public ResponseEntity<String> updateUser(@PathVariable Long id,
+                                             @Valid @RequestBody User updateUser,
+                                             Authentication authentication){
         logger.info("Updating user with ID: {}", id);
-        Optional<User> optionalUser = userRepository.findById(id);
-         if (optionalUser.isPresent()){
-             User  user = optionalUser.get();
-             user.setName(updateUser.getName());
-             user.setAge(updateUser.getAge());
-             user.setLastName(updateUser.getLastName());
-             userRepository.save(user);
-             logger.info("User {} {} with ID: {} updated successfully", user.getName(), user.getLastName(), id);
-             String message = "User " + user.getName() + " " + user.getLastName() + " is updated.";
-             return ResponseEntity.ok(message);
-         }
-        logger.warn("User with ID: {} not found for update", id);
-         return ResponseEntity.notFound().build();
-    }
 
-    @DeleteMapping("/users/{id}")
-    public ResponseEntity<String> deleteUser(@PathVariable Long id){
-        logger.info("Deleting user with ID: {}", id);
+        // Get current user's email and role
+        String currentUserEmail = authentication.getName();  // Email from JWT
+        String currentUserRole = authentication.getAuthorities().iterator().next().getAuthority();  // Role from JWT
+
+        // Find user to update
         Optional<User> optionalUser = userRepository.findById(id);
-        if (optionalUser.isPresent()) {
-            User user = optionalUser.get();
-            userRepository.delete(user);
-            String message = "user: " + user.getName() + " " + user.getLastName() + " deleted";
-            logger.info("User with ID: {} delete successfully", id);
-            return ResponseEntity.ok(message);
+        if (optionalUser.isEmpty()) {
+            logger.warn("User with ID: {} not found for update", id);
+            return ResponseEntity.notFound().build();
         }
-        logger.warn("User with ID: {} not found for deletion", id);
-        return ResponseEntity.notFound().build();
+
+        User user = optionalUser.get();
+
+        // Authorization check: ADMIN can update anyone, USER can only update themselves
+        boolean isAdmin = "ROLE_ADMIN".equals(currentUserRole);
+        boolean isOwner = user.getEmail().equals(currentUserEmail);
+
+        if (!isAdmin && !isOwner) {
+            logger.warn("User {} attempted to update user ID: {} without authorization", currentUserEmail, id);
+            return ResponseEntity.status(403).body("You can only update your own profile");
+        }
+
+        // Update user
+        user.setName(updateUser.getName());
+        user.setAge(updateUser.getAge());
+        user.setLastName(updateUser.getLastName());
+        userRepository.save(user);
+
+        logger.info("User {} {} with ID: {} updated successfully", user.getName(), user.getLastName(), id);
+        String message = "User " + user.getName() + " " + user.getLastName() + " is updated.";
+        return ResponseEntity.ok(message);
     }
 
+    @PreAuthorize("isAuthenticated()")  // Must be logged in
+    @DeleteMapping("/users/{id}")
+    public ResponseEntity<String> deleteUser(@PathVariable Long id, Authentication authentication){
+        logger.info("Deleting user with ID: {}", id);
+
+        // Get current user's email and role
+        String currentUserEmail = authentication.getName();  // Email from JWT
+        String currentUserRole = authentication.getAuthorities().iterator().next().getAuthority();  // Role from JWT
+
+        // Find user to delete
+        Optional<User> optionalUser = userRepository.findById(id);
+        if (optionalUser.isEmpty()) {
+            logger.warn("User with ID: {} not found for deletion", id);
+            return ResponseEntity.notFound().build();
+        }
+
+        User user = optionalUser.get();
+
+        // Authorization check: ADMIN can delete anyone, USER can only delete themselves
+        boolean isAdmin = "ROLE_ADMIN".equals(currentUserRole);
+        boolean isOwner = user.getEmail().equals(currentUserEmail);
+
+        if (!isAdmin && !isOwner) {
+            logger.warn("User {} attempted to delete user ID: {} without authorization", currentUserEmail, id);
+            return ResponseEntity.status(403).body("You can only delete your own profile");
+        }
+
+        // Delete user
+        userRepository.delete(user);
+        String message = "user: " + user.getName() + " " + user.getLastName() + " deleted";
+        logger.info("User with ID: {} deleted successfully", id);
+        return ResponseEntity.ok(message);
+    }
+
+    @PreAuthorize("isAuthenticated()")  // Any authenticated user can search by age
     @GetMapping("/users/age/{age}")
     public ResponseEntity<List<User>> findUserByAge(@PathVariable int age){
         List<User> users = userRepository.findByAge(age);
@@ -95,6 +147,7 @@ public class UserController {
         return ResponseEntity.ok(users);
     }
 
+    @PreAuthorize("isAuthenticated()")  // Any authenticated user can search by age range
     @GetMapping("/users/age-above/{age}")
     public ResponseEntity<List<User>> findByAgeGreaterThan(@PathVariable int age){
         List<User> users = userRepository.findByAgeGreaterThan(age);
@@ -102,6 +155,7 @@ public class UserController {
         return ResponseEntity.ok(users);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")  // Only ADMIN can search by email (sensitive data)
     @GetMapping("/users/email/{email}")
     public ResponseEntity<User> findUserByEmail(@PathVariable String email){
         Optional<User> optionalUser = userRepository.findByEmail(email);
