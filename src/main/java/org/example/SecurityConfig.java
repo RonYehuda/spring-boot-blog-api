@@ -11,7 +11,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-
+import org.springframework.http.HttpMethod;
 /**
  * SecurityConfig - Spring Security Configuration Class
  *
@@ -63,6 +63,10 @@ public class SecurityConfig {
                         // Anyone can access these without authentication
                         // These are needed for user registration and obtaining JWT tokens
                         .requestMatchers("/auth/**").permitAll()
+
+                        // Public GET endpoints for posts - anyone can view posts
+                        .requestMatchers(HttpMethod.GET, "/posts/**").permitAll()           // All GET /posts/** endpoints
+                        .requestMatchers(HttpMethod.GET, "/users/*/posts").permitAll()      // GET /users/{id}/posts endpoint
 
                         // All other endpoints require authentication
                         // User must provide valid JWT token in Authorization header

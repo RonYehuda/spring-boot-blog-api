@@ -72,10 +72,6 @@ public class UserController {
                                              Authentication authentication){
         logger.info("Updating user with ID: {}", id);
 
-        // Get current user's email and role
-        String currentUserEmail = authentication.getName();  // Email from JWT
-        String currentUserRole = authentication.getAuthorities().iterator().next().getAuthority();  // Role from JWT
-
         // Find user to update
         Optional<User> optionalUser = userRepository.findById(id);
         if (optionalUser.isEmpty()) {
@@ -85,12 +81,9 @@ public class UserController {
 
         User user = optionalUser.get();
 
-        // Authorization check: ADMIN can update anyone, USER can only update themselves
-        boolean isAdmin = "ROLE_ADMIN".equals(currentUserRole);
-        boolean isOwner = user.getEmail().equals(currentUserEmail);
-
-        if (!isAdmin && !isOwner) {
-            logger.warn("User {} attempted to update user ID: {} without authorization", currentUserEmail, id);
+        // check if the user is ADMIN or own this profile
+        if(!AuthUtil.isAdminOrOwner(authentication, user.getEmail())){
+            logger.warn("User {} attempted to update user ID: {} without authorization",authentication.getName(), id);
             return ResponseEntity.status(403).body("You can only update your own profile");
         }
 
@@ -110,10 +103,6 @@ public class UserController {
     public ResponseEntity<String> deleteUser(@PathVariable Long id, Authentication authentication){
         logger.info("Deleting user with ID: {}", id);
 
-        // Get current user's email and role
-        String currentUserEmail = authentication.getName();  // Email from JWT
-        String currentUserRole = authentication.getAuthorities().iterator().next().getAuthority();  // Role from JWT
-
         // Find user to delete
         Optional<User> optionalUser = userRepository.findById(id);
         if (optionalUser.isEmpty()) {
@@ -123,12 +112,8 @@ public class UserController {
 
         User user = optionalUser.get();
 
-        // Authorization check: ADMIN can delete anyone, USER can only delete themselves
-        boolean isAdmin = "ROLE_ADMIN".equals(currentUserRole);
-        boolean isOwner = user.getEmail().equals(currentUserEmail);
-
-        if (!isAdmin && !isOwner) {
-            logger.warn("User {} attempted to delete user ID: {} without authorization", currentUserEmail, id);
+        if(!AuthUtil.isAdminOrOwner(authentication, user.getEmail())){
+            logger.warn("User {} attempted to delete user ID: {} without authorization",authentication.getName(), id);
             return ResponseEntity.status(403).body("You can only delete your own profile");
         }
 
