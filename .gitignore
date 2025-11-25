@@ -37,5 +37,5 @@ build/
 ### Mac OS ###
 .DS_Store
 
-### Application Properties ###
-application.properties
+### Application properties with sensitive data ###
+application-dev.properties
