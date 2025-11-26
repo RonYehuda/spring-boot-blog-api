@@ -21,8 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)  // ← הוסף!
-
+@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
 public class PostControllerMockMvcTest {
     @Autowired
     private MockMvc mockMvc;
@@ -206,7 +205,7 @@ public class PostControllerMockMvcTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"title\":\"test 2 title\",\"content\":\"test 2 content\"}"));
         //get all post by user (id = 1L)
-        mockMvc.perform(get("/posts/user/{userId}",1L)
+        mockMvc.perform(get("/users/{userId}/posts",1L)
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk());
     }
@@ -234,7 +233,7 @@ public class PostControllerMockMvcTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"title\":\"test 2 title\",\"content\":\"test 2 content\"}"));
         //try to get all post of user that no exist
-        mockMvc.perform(get("/posts/user/{userId}",3L)
+        mockMvc.perform(get("/users/{userId}/posts",3L)
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isNotFound());
     }

@@ -3,7 +3,7 @@ package org.example;
 import org.springframework.stereotype.Component;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
-
+import org.springframework.beans.factory.annotation.Value;
 import java.util.Date;
 
 /**
@@ -13,7 +13,8 @@ import java.util.Date;
 @Component  // Tells Spring to manage this class as a bean
 public class JwtUtil {
     // Secret key for encryption - must be at least 256 bits (32 characters)
-    private String SECRET_KEY = "mySecretKey123456789012345678901234567890";
+    @Value("${jwt.secret}")
+    private String SECRET_KEY;
 
     /**
      * Generates a new JWT token for a user
