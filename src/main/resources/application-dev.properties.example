@@ -11,3 +11,8 @@ spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect
 
 # JWT Configuration
 jwt.secret=YOUR_JWT_SECRET_HERE
+
+# Actuator Configuration
+management.endpoints.web.exposure.include=health,info,metrics
+management.endpoint.health.show-details=always
+management.info.env.enabled=true

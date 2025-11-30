@@ -63,6 +63,7 @@ public class SecurityConfig {
                         // Anyone can access these without authentication
                         // These are needed for user registration and obtaining JWT tokens
                         .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers("/actuator/**").permitAll()
 
                         // Public GET endpoints for posts - anyone can view posts
                         .requestMatchers(HttpMethod.GET, "/posts/**").permitAll()           // All GET /posts/** endpoints
